@@ -113,7 +113,7 @@ impl<T> Buffer<T> {
         Some(v)
     }
 
-    pub fn try_pop_with<F,R>(&self, f: F) -> Option<R> where F: Fn(&T) -> R {
+    pub fn try_pop_with<F,R>(&self, mut f: F) -> Option<R> where F: FnMut(&T) -> R {
         let current_head = self.head.load(Ordering::Relaxed);
 
         if current_head == self.shadow_tail.get() {
@@ -485,7 +485,7 @@ impl<T> Consumer<T> {
         (*self.buffer).try_pop()
     }
 
-    pub fn try_pop_with<F,R>(&self, f: F) -> Option<R> where F: Fn(&T) -> R {
+    pub fn try_pop_with<F,R>(&self, f: F) -> Option<R> where F: FnMut(&T) -> R {
         (*self.buffer).try_pop_with(f)
     }
 
