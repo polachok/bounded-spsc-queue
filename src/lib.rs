@@ -485,6 +485,10 @@ impl<T> Consumer<T> {
         (*self.buffer).try_pop()
     }
 
+    pub fn try_pop_with<F,R>(&self, f: F) -> Option<R> where F: Fn(&T) -> R {
+        (*self.buffer).try_pop_with(f)
+    }
+
     /// Returns the total capacity of this queue
     ///
     /// This value represents the total capacity of the queue when it is full.  It does not
