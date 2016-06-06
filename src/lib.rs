@@ -113,6 +113,22 @@ impl<T> Buffer<T> {
         Some(v)
     }
 
+    pub fn try_pop_with<F,R>(&self, f: F) -> Option<R> where F: Fn(&T) -> R {
+        let current_head = self.head.load(Ordering::Relaxed);
+
+        if current_head == self.shadow_tail.get() {
+            self.shadow_tail.set(self.tail.load(Ordering::Acquire));
+            if current_head == self.shadow_tail.get() {
+                return None;
+            }
+        }
+
+        let ptr = unsafe { self.load(current_head) };
+        let res = f(ptr);
+        self.head.store(current_head.wrapping_add(1), Ordering::Release);
+        return Some(res);
+    }
+
     /// Pop a value off the buffer.
     ///
     /// This method will block until the buffer is non-empty.  The waiting strategy is a simple
