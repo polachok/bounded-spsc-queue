@@ -182,6 +182,22 @@ impl<T> Buffer<T> {
         None
     }
 
+    pub fn try_push_with<F,R>(&self, mut f: F) -> Option<R> where F: FnMut(&mut T) -> R {
+        let current_tail = self.tail.load(Ordering::Relaxed);
+
+        if self.shadow_head.get() + self.capacity <= current_tail {
+            self.shadow_head.set(self.head.load(Ordering::Relaxed));
+            if self.shadow_head.get() + self.capacity <= current_tail {
+                return None;
+            }
+        }
+
+        let end = unsafe { mem::transmute(self.buffer.offset((current_tail & (self.allocated_size - 1)) as isize)) };
+        let res = f(end);
+        self.tail.store(current_tail.wrapping_add(1), Ordering::Release);
+        Some(res)
+    }
+
     /// Push a value onto the buffer.
     ///
     /// This method will block until the buffer is non-full.  The waiting strategy is a simple
@@ -382,6 +398,11 @@ impl<T> Producer<T> {
     /// ```
     pub fn try_push(&self, v: T) -> Option<T> {
         (*self.buffer).try_push(v)
+    }
+
+
+    pub fn try_push_with<F,R>(&self, f: F) -> Option<R> where F: FnMut(&mut T) -> R {
+        (*self.buffer).try_push_with(f)
     }
 
     /// Returns the total capacity of this queue
